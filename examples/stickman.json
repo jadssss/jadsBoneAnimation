@@ -1,0 +1,13 @@
+{
+  "name": "simple",
+  "bones": {
+    "root": {"id": "root", "x": 250, "y": 250, "angle": 0, "length": 0, "parent": null},
+    "torso": {"id": "torso", "x": 0, "y": -50, "angle": 0, "length": 80, "parent": "root"},
+    "head": {"id": "head", "x": 0, "y": -120, "angle": 0, "length": 30, "parent": "root"},
+    "left_arm": {"id": "left_arm", "x": -40, "y": -50, "angle": -30, "length": 60, "parent": "torso"},
+    "right_arm": {"id": "right_arm", "x": 40, "y": -50, "angle": 30, "length": 60, "parent": "torso"}
+  },
+  "frames": {
+    "0": {}
+  }
+}

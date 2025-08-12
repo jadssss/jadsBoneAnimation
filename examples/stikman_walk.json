@@ -1,0 +1,14 @@
+{
+  "name": "walk",
+  "bones": {
+    "root": {"id": "root", "x": 250, "y": 250, "angle": 0, "length": 0, "parent": null},
+    "torso": {"id": "torso", "x": 0, "y": -50, "angle": 0, "length": 80, "parent": "root"},
+    "left_leg": {"id": "left_leg", "x": -15, "y": 30, "angle": 10, "length": 70, "parent": "root"},
+    "right_leg": {"id": "right_leg", "x": 15, "y": 30, "angle": -10, "length": 70, "parent": "root"}
+  },
+  "frames": {
+    "0": {"left_leg": {"angle": 10}, "right_leg": {"angle": -10}},
+    "1": {"left_leg": {"angle": -10}, "right_leg": {"angle": 10}},
+    "2": {"left_leg": {"angle": 10}, "right_leg": {"angle": -10}}
+  }
+}
