@@ -36,7 +36,7 @@ def setup_gui(scene, storage, render):
             dpg.set_value("prop_angle", overrides.get('angle', b.angle))
             dpg.set_value("prop_length", overrides.get('length', b.length))
         dpg.set_value("status_text",
-                      f"Frame: {state['current_frame']} | Bone: {state['selected_bone']} | Mode: {state['tool_mode']}")
+                      f"Кадр: {state['current_frame']} | Кость: {state['selected_bone']} | Режим: {state['tool_mode']}")
         dpg.set_value("job_status_text", state['job_status'])
 
     def render_scene():
@@ -143,15 +143,37 @@ def setup_gui(scene, storage, render):
             update_ui()
             render_scene()
 
+    def load_example_xml_cb():
+        name = dpg.get_value("examples_xml_combo")
+        if name and storage.load_example(name, scene, is_xml=True):
+            state['current_frame'] = 0
+            update_positions()
+            update_ui()
+            render_scene()
+
     def save_scene_cb():
         name = dpg.get_value("save_name")
         if name:
             storage.save_scene(name, scene)
             dpg.configure_item("load_combo", items=storage.list_saved())
 
+    def save_scene_xml_cb():
+        name = dpg.get_value("save_name_xml")
+        if name:
+            storage.save_scene(name, scene, is_xml=True)
+            dpg.configure_item("load_xml_combo", items=storage.list_saved('.xml'))
+
     def load_scene_cb():
         name = dpg.get_value("load_combo")
         if name and storage.load_saved(name, scene):
+            state['current_frame'] = 0
+            update_positions()
+            update_ui()
+            render_scene()
+
+    def load_scene_xml_cb():
+        name = dpg.get_value("load_xml_combo")
+        if name and storage.load_saved(name, scene, is_xml=True):
             state['current_frame'] = 0
             update_positions()
             update_ui()
@@ -187,61 +209,73 @@ def setup_gui(scene, storage, render):
 
     # Настройка окна
     dpg.create_context()
-    dpg.create_viewport(title='Bone Animator', width=1200, height=800)
+    dpg.create_viewport(title='Аниматор Костей', width=1200, height=800)
 
-    with dpg.window(label="Bone Animator", no_close=True, no_title_bar=True, width=1200, height=800):
+    with dpg.window(label="Аниматор Костей", no_close=True, no_title_bar=True, width=1200, height=800):
         with dpg.menu_bar():
-            with dpg.menu(label="File"):
-                dpg.add_combo(label="Examples", tag="examples_combo", items=storage.list_examples(),
+            with dpg.menu(label="Файл"):
+                dpg.add_text("Примеры JSON:")
+                dpg.add_combo(label="Примеры", tag="examples_combo", items=storage.list_examples('.json'),
                               callback=load_example_cb)
-                dpg.add_input_text(label="Save as", tag="save_name")
-                dpg.add_button(label="Save", callback=save_scene_cb)
-                dpg.add_combo(label="Load", tag="load_combo", items=storage.list_saved(), callback=load_scene_cb)
-                dpg.add_button(label="Export GIF/MP4", callback=start_render_cb)
+                dpg.add_text("Примеры XML:")
+                dpg.add_combo(label="Примеры", tag="examples_xml_combo", items=storage.list_examples('.xml'),
+                              callback=load_example_xml_cb)
+                dpg.add_separator()
+                dpg.add_input_text(label="Сохранить как JSON", tag="save_name")
+                dpg.add_button(label="Сохранить JSON", callback=save_scene_cb)
+                dpg.add_combo(label="Загрузить JSON", tag="load_combo", items=storage.list_saved('.json'),
+                              callback=load_scene_cb)
+                dpg.add_separator()
+                dpg.add_input_text(label="Сохранить как XML", tag="save_name_xml")
+                dpg.add_button(label="Сохранить XML", callback=save_scene_xml_cb)
+                dpg.add_combo(label="Загрузить XML", tag="load_xml_combo", items=storage.list_saved('.xml'),
+                              callback=load_scene_xml_cb)
+                dpg.add_separator()
+                dpg.add_button(label="Экспорт GIF/MP4", callback=start_render_cb)
                 dpg.add_text(tag="job_status_text", default_value="")
 
         with dpg.group(horizontal=True):
             with dpg.child_window(width=200):
-                dpg.add_text("Tools")
-                dpg.add_button(label="Select", callback=set_tool, user_data="select")
-                dpg.add_button(label="Move", callback=set_tool, user_data="move")
-                dpg.add_button(label="Rotate", callback=set_tool, user_data="rotate")
-                dpg.add_button(label="Scale", callback=set_tool, user_data="scale")
+                dpg.add_text("Инструменты")
+                dpg.add_button(label="Выбрать", callback=set_tool, user_data="select")
+                dpg.add_button(label="Переместить", callback=set_tool, user_data="move")
+                dpg.add_button(label="Повернуть", callback=set_tool, user_data="rotate")
+                dpg.add_button(label="Масштабировать", callback=set_tool, user_data="scale")
                 dpg.add_separator()
-                dpg.add_text("Add Bone")
+                dpg.add_text("Добавить кость")
                 dpg.add_input_text(tag="new_bone_id", label="ID")
-                dpg.add_input_text(tag="new_bone_parent", label="Parent")
-                dpg.add_button(label="Add", callback=add_bone_cb)
-                dpg.add_button(label="Delete Selected", callback=delete_bone_cb)
+                dpg.add_input_text(tag="new_bone_parent", label="Родитель")
+                dpg.add_button(label="Добавить", callback=add_bone_cb)
+                dpg.add_button(label="Удалить выбранную", callback=delete_bone_cb)
                 dpg.add_separator()
-                dpg.add_button(label="Undo (Ctrl+Z)", callback=undo_cb)
-                dpg.add_button(label="Redo (Ctrl+Y)", callback=redo_cb)
+                dpg.add_button(label="Отменить (Ctrl+Z)", callback=undo_cb)
+                dpg.add_button(label="Повторить (Ctrl+Y)", callback=redo_cb)
                 dpg.add_separator()
-                dpg.add_checkbox(label="Onion Prev", default_value=state['onion_prev'], callback=set_onion_prev)
-                dpg.add_checkbox(label="Onion Next", default_value=state['onion_next'], callback=set_onion_next)
-                dpg.add_slider_float(label="Onion Alpha", default_value=state['onion_alpha'], min_value=0.0,
+                dpg.add_checkbox(label="Onion предыдущий", default_value=state['onion_prev'], callback=set_onion_prev)
+                dpg.add_checkbox(label="Onion следующий", default_value=state['onion_next'], callback=set_onion_next)
+                dpg.add_slider_float(label="Onion прозрачность", default_value=state['onion_alpha'], min_value=0.0,
                                      max_value=1.0, callback=set_onion_alpha)
 
             with dpg.child_window(width=600):
                 with dpg.drawlist(tag="drawlist", width=500, height=500):
                     pass
-                dpg.add_slider_int(tag="frame_slider", label="Frame", default_value=0, min_value=0, max_value=0,
+                dpg.add_slider_int(tag="frame_slider", label="Кадр", default_value=0, min_value=0, max_value=0,
                                    callback=change_frame)
-                dpg.add_button(label="Add Frame", callback=add_frame_cb)
-                dpg.add_button(label="Play/Pause", callback=toggle_play)
+                dpg.add_button(label="Добавить кадр", callback=add_frame_cb)
+                dpg.add_button(label="Воспроизвести/Пауза", callback=toggle_play)
                 dpg.add_slider_int(label="FPS", default_value=12, min_value=1, max_value=60, callback=set_fps)
 
             with dpg.child_window(width=200):
-                dpg.add_text("Bones")
+                dpg.add_text("Кости")
                 dpg.add_listbox(tag="bone_list", items=[], callback=select_bone, num_items=10)
                 dpg.add_separator()
-                dpg.add_text("Properties")
+                dpg.add_text("Свойства")
                 dpg.add_input_float(tag="prop_x", label="X", callback=update_prop, user_data="x")
                 dpg.add_input_float(tag="prop_y", label="Y", callback=update_prop, user_data="y")
-                dpg.add_input_float(tag="prop_angle", label="Angle", callback=update_prop, user_data="angle")
-                dpg.add_input_float(tag="prop_length", label="Length", callback=update_prop, user_data="length")
+                dpg.add_input_float(tag="prop_angle", label="Угол", callback=update_prop, user_data="angle")
+                dpg.add_input_float(tag="prop_length", label="Длина", callback=update_prop, user_data="length")
 
-        dpg.add_text(tag="status_text", default_value="Status")
+        dpg.add_text(tag="status_text", default_value="Статус")
 
     # Инициализация
     update_positions()
