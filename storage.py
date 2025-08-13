@@ -1,23 +1,32 @@
+# /storage.py
+# Storage management / Управление хранением
+
 import json
 import os
 from lxml import etree
+import logging
+
+logger = logging.getLogger(__name__)
+
+logger.debug('storage.py run')
+file_id = 'storage'
 
 BASE_DIR = os.path.dirname(__file__)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 STORAGE_DIR = os.path.join(BASE_DIR, "storage_files")
 try:
     os.makedirs(STORAGE_DIR, exist_ok=True)
-    print("Отладка: Директория STORAGE_DIR создана или существует")
+    logger.info(f'STORAGE_DIR created or exists | {file_id}')
 except Exception as e:
-    print(f"Отладка: Ошибка создания STORAGE_DIR: {e}")
+    logger.error(f'error creating STORAGE_DIR: {e} | {file_id}')
 
 def list_examples(extension='.json'):
     try:
         files = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(extension)]
-        print(f"Отладка: Список примеров {extension}: {files}")
+        logger.info(f'list examples {extension}: {files} | {file_id}')
         return files
     except Exception as e:
-        print(f"Отладка: Ошибка в list_examples: {e}")
+        logger.error(f'error in list_examples: {e} | {file_id}')
         return []
 
 def load_example(name, scene, is_xml=False):
@@ -31,21 +40,21 @@ def load_example(name, scene, is_xml=False):
                     loaded = json.load(f)
                 scene.push_undo()
                 scene._restore(loaded)
-                print(f"Отладка: Загружен JSON-пример {name}")
+                logger.info(f'loaded JSON example {name} | {file_id}')
                 return True
-        print(f"Отладка: Пример {name} не найден")
+        logger.warning(f'example {name} not found | {file_id}')
         return False
     except Exception as e:
-        print(f"Отладка: Ошибка в load_example {name}: {e}")
+        logger.error(f'error in load_example {name}: {e} | {file_id}')
         return False
 
 def list_saved(extension='.json'):
     try:
         files = [f for f in os.listdir(STORAGE_DIR) if f.endswith(extension)]
-        print(f"Отладка: Список сохранений {extension}: {files}")
+        logger.info(f'list saved {extension}: {files} | {file_id}')
         return files
     except Exception as e:
-        print(f"Отладка: Ошибка в list_saved: {e}")
+        logger.error(f'error in list_saved: {e} | {file_id}')
         return []
 
 def save_scene(name, scene, is_xml=False):
@@ -53,16 +62,16 @@ def save_scene(name, scene, is_xml=False):
         if is_xml:
             path = os.path.join(STORAGE_DIR, f"{name}.xml")
             save_xml(path, scene)
-            print(f"Отладка: Сохранён XML в {path}")
+            logger.info(f'saved XML to {path} | {file_id}')
             return path
         else:
             path = os.path.join(STORAGE_DIR, f"{name}.json")
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(scene.to_dict(), f, ensure_ascii=False, indent=2)
-            print(f"Отладка: Сохранён JSON в {path}")
+            logger.info(f'saved JSON to {path} | {file_id}')
             return path
     except Exception as e:
-        print(f"Отладка: Ошибка в save_scene {name}: {e}")
+        logger.error(f'error in save_scene {name}: {e} | {file_id}')
         return None
 
 def load_saved(name, scene, is_xml=False):
@@ -76,12 +85,12 @@ def load_saved(name, scene, is_xml=False):
                     loaded = json.load(f)
                 scene.push_undo()
                 scene._restore(loaded)
-                print(f"Отладка: Загружен сохранённый JSON {name}")
+                logger.info(f'loaded saved JSON {name} | {file_id}')
                 return True
-        print(f"Отладка: Сохранение {name} не найдено")
+        logger.warning(f'save {name} not found | {file_id}')
         return False
     except Exception as e:
-        print(f"Отладка: Ошибка в load_saved {name}: {e}")
+        logger.error(f'error in load_saved {name}: {e} | {file_id}')
         return False
 
 def load_xml(path, scene):
@@ -104,10 +113,10 @@ def load_xml(path, scene):
             idx = int(f.get('index', '0'))
             scene.frames[idx] = {}
         scene.push_undo()
-        print(f"Отладка: Загружен XML из {path}")
+        logger.info(f'loaded XML from {path} | {file_id}')
         return True
     except Exception as e:
-        print(f"Отладка: Ошибка в load_xml {path}: {e}")
+        logger.error(f'error in load_xml {path}: {e} | {file_id}')
         return False
 
 def save_xml(path, scene):
@@ -121,6 +130,6 @@ def save_xml(path, scene):
             frame_elem = etree.SubElement(frames_elem, "frame", index=str(idx))
         tree = etree.ElementTree(root)
         tree.write(path, pretty_print=True, xml_declaration=True, encoding="utf-8")
-        print(f"Отладка: Сохранён XML в {path}")
+        logger.info(f'saved XML to {path} | {file_id}')
     except Exception as e:
-        print(f"Отладка: Ошибка в save_xml {path}: {e}")
+        logger.error(f'error in save_xml {path}: {e} | {file_id}')

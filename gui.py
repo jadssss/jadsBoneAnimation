@@ -1,12 +1,23 @@
+# /gui.py
+# GUI setup and management / Настройка и управление GUI
+
 import asyncio
+from time import process_time_ns
+
 import dearpygui.dearpygui as dpg
 import numpy as np
 import os
 import json
+import logging
 
+logger = logging.getLogger(__name__)
+
+logger.debug('gui.py run')
+file_id = 'gui'
 
 def setup_gui(scene, storage, render):
-    # Глобальные переменные для GUI
+    logger.info(f'setup GUI | {file_id}')
+    # Global variables for GUI / Глобальные переменные для GUI
     state = {
         'current_frame': 0,
         'selected_bone': None,
@@ -18,27 +29,32 @@ def setup_gui(scene, storage, render):
         'onion_alpha': 0.3,
         'positions': {},
         'job_status': "",
-        'language': 'ru',  # По умолчанию русский
-        'translations': {}  # Словарь переводов
+        'language': 'ru',  # By default Russian / По умолчанию русский
+        'translations': {}  # Dictionary of translations / Словарь переводов
     }
+    logger.debug(f'state initialized | {file_id}')
 
-    # Загрузка переводов
+    # Load translations / Загрузка переводов
     def load_translations(lang):
+        logger.info(f'load translations for {lang} | {file_id}')
         lang_path = os.path.join(os.path.dirname(__file__), 'lang', f"{lang}.json")
         if os.path.exists(lang_path):
             with open(lang_path, 'r', encoding='utf-8') as f:
                 state['translations'] = json.load(f)
-            print(f"Отладка: Загружены переводы для {lang}")
+            logger.debug(f'translations loaded for {lang} | {file_id}')
         else:
-            print(f"Отладка: Файл переводов {lang}.json не найден")
-            state['translations'] = {}  # Пустой словарь, если не найден
+            logger.warning(f'translations file {lang}.json not found | {file_id}')
+            state['translations'] = {}  # Empty dictionary if not found / Пустой словарь, если не найден
+        logger.debug(f'end load translations | {file_id}')
 
-    # Функция для получения перевода
+    # Function to get translation / Функция для получения перевода
     def t(key):
-        return state['translations'].get(key, key)  # Если нет перевода, возвращаем ключ
+        logger.debug(f'get translation for {key} | {file_id}')
+        return state['translations'].get(key, key)  # If no translation, return key / Если нет перевода, возвращаем ключ
 
-    # Перезагрузка UI при смене языка
+    # Reload UI when changing language / Перезагрузка UI при смене языка
     def reload_ui():
+        logger.info(f'reload UI | {file_id}')
         dpg.set_viewport_title(t('title'))
         dpg.set_item_label("file_menu", t('file_menu'))
         dpg.set_item_label("examples_json_text", t('examples_json'))
@@ -76,20 +92,24 @@ def setup_gui(scene, storage, render):
         dpg.set_item_label("prop_y", t('y'))
         dpg.set_item_label("prop_angle", t('angle'))
         dpg.set_item_label("prop_length", t('length'))
-        update_ui()  # Обновляем статус
-        print(f"Отладка: Интерфейс обновлён для языка {state['language']}")
+        update_ui()  # Update status / Обновляем статус
+        logger.debug(f'UI reloaded for language {state["language"]} | {file_id}')
+        logger.debug(f'end reload UI | {file_id}')
 
-    # Инициализация переводов
+    # Initialization of translations / Инициализация переводов
     load_translations(state['language'])
 
     def update_positions():
+        logger.info(f'update positions | {file_id}')
         state['positions'] = {
             k: {"x": v[0], "y": v[1], "angle": v[2], "length": v[3]}
             for k, v in scene.compute_abs_positions(state['current_frame']).items()
         }
-        print(f"Отладка: Обновлены позиции для кадра {state['current_frame']}")
+        logger.debug(f'positions updated for frame {state["current_frame"]} | {file_id}')
+        logger.debug(f'end update positions | {file_id}')
 
     def update_ui():
+        logger.info(f'update UI | {file_id}')
         dpg.set_value("frame_slider", state['current_frame'])
         dpg.configure_item("frame_slider", max_value=max(scene.frames.keys()))
         dpg.set_value("bone_list", list(scene.bones.keys()))
@@ -103,9 +123,11 @@ def setup_gui(scene, storage, render):
         dpg.set_value("status_text",
                       f"{t('frame')}: {state['current_frame']} | {t('bones')}: {state['selected_bone']} | {t('tool_mode')}: {state['tool_mode']}")
         dpg.set_value("job_status_text", state['job_status'])
-        print(f"Отладка: Обновлён UI, выбранная кость: {state['selected_bone']}")
+        logger.debug(f'UI updated, selected bone: {state["selected_bone"]} | {file_id}')
+        logger.debug(f'end update UI | {file_id}')
 
     def render_scene():
+        logger.info(f'render scene | {file_id}')
         dpg.delete_item("drawlist", children_only=True)
         for bid, pos in state['positions'].items():
             x, y = pos['x'], pos['y']
@@ -129,38 +151,48 @@ def setup_gui(scene, storage, render):
                 ey = y + np.sin(np.radians(v[2])) * v[3]
                 dpg.draw_line((x, y), (ex, ey), color=(128, 128, 128, int(255 * state['onion_alpha'])), thickness=2,
                               parent="drawlist")
-        print("Отладка: Сцена отрисована")
+        logger.debug(f'scene rendered | {file_id}')
+        logger.debug(f'end render scene | {file_id}')
 
     async def play_animation():
+        logger.info(f'play animation | {file_id}')
         while state['playing']:
             state['current_frame'] = (state['current_frame'] + 1) % (max(scene.frames.keys()) + 1)
             update_positions()
             update_ui()
             render_scene()
             await asyncio.sleep(1 / state['fps'])
-        print("Отладка: Анимация остановлена")
+        logger.debug(f'animation stopped | {file_id}')
+        logger.debug(f'end play animation | {file_id}')
 
     def toggle_play():
+        logger.info(f'toggle play | {file_id}')
         state['playing'] = not state['playing']
         if state['playing']:
             asyncio.create_task(play_animation())
-            print("Отладка: Анимация запущена")
+            logger.debug(f'animation started | {file_id}')
         else:
-            print("Отладка: Анимация на паузе")
+            logger.debug(f'animation paused | {file_id}')
+        logger.debug(f'end toggle play | {file_id}')
 
     def change_frame(sender, data):
+        logger.info(f'change frame | {file_id}')
         state['current_frame'] = data
         update_positions()
         update_ui()
         render_scene()
-        print(f"Отладка: Сменён кадр на {data}")
+        logger.debug(f'frame changed to {data} | {file_id}')
+        logger.debug(f'end change frame | {file_id}')
 
     def select_bone(sender, data):
+        logger.info(f'select bone | {file_id}')
         state['selected_bone'] = data
         update_ui()
-        print(f"Отладка: Выбрана кость {data}")
+        logger.debug(f'bone selected {data} | {file_id}')
+        logger.debug(f'end select bone | {file_id}')
 
     def update_prop(sender, data):
+        logger.info(f'update prop | {file_id}')
         if state['selected_bone']:
             key = dpg.get_item_user_data(sender)
             updates = {key: data}
@@ -169,9 +201,11 @@ def setup_gui(scene, storage, render):
             update_positions()
             update_ui()
             render_scene()
-            print(f"Отладка: Обновлено свойство {key} = {data} для кости {state['selected_bone']}")
+            logger.debug(f'updated prop {key} = {data} for bone {state["selected_bone"]} | {file_id}')
+        logger.debug(f'end update prop | {file_id}')
 
     def add_bone_cb():
+        logger.info(f'add bone cb | {file_id}')
         bid = dpg.get_value("new_bone_id")
         parent = dpg.get_value("new_bone_parent")
         if bid:
@@ -179,9 +213,11 @@ def setup_gui(scene, storage, render):
             scene.bones[bid] = scene.Bone(id=bid, x=0, y=0, angle=0, length=50, parent=parent)
             update_ui()
             render_scene()
-            print(f"Отладка: Добавлена кость {bid} с родителем {parent}")
+            logger.debug(f'added bone {bid} with parent {parent} | {file_id}')
+        logger.debug(f'end add bone cb | {file_id}')
 
     def delete_bone_cb():
+        logger.info(f'delete bone cb | {file_id}')
         if state['selected_bone']:
             scene.push_undo()
             scene.delete_bone(state['selected_bone'])
@@ -189,128 +225,158 @@ def setup_gui(scene, storage, render):
             update_positions()
             update_ui()
             render_scene()
-            print(f"Отладка: Удалена кость {state['selected_bone']}")
-
-    def add_frame_cb():
-        scene.push_undo()
-        idx = scene.add_frame()
-        state['current_frame'] = idx
-        update_positions()
-        update_ui()
-        render_scene()
-        print(f"Отладка: Добавлен кадр {idx}")
+            logger.debug(f'deleted bone {state["selected_bone"]} | {file_id}')
+        logger.debug(f'end delete bone cb | {file_id}')
 
     def undo_cb():
+        logger.info(f'undo cb | {file_id}')
         if scene.undo():
             update_positions()
             update_ui()
             render_scene()
-            print("Отладка: Отмена действия")
+            logger.debug(f'undo performed | {file_id}')
+        logger.debug(f'end undo cb | {file_id}')
 
     def redo_cb():
+        logger.info(f'redo cb | {file_id}')
         if scene.redo():
             update_positions()
             update_ui()
             render_scene()
-            print("Отладка: Повтор действия")
+            logger.debug(f'redo performed | {file_id}')
+        logger.debug(f'end redo cb | {file_id}')
 
-    def load_example_cb():
-        name = dpg.get_value("examples_combo")
-        if name and storage.load_example(name, scene):
+    def add_frame_cb():
+        logger.info(f'add frame cb | {file_id}')
+        scene.push_undo()
+        scene.add_frame()
+        update_ui()
+        logger.debug(f'frame added | {file_id}')
+        logger.debug(f'end add frame cb | {file_id}')
+
+    def load_example_cb(sender, data):
+        logger.info(f'load example cb | {file_id}')
+        if data and storage.load_example(data, scene):
             state['current_frame'] = 0
             update_positions()
             update_ui()
             render_scene()
-            print(f"Отладка: Загружен JSON-пример {name}")
+            logger.debug(f'loaded JSON example {data} | {file_id}')
+        logger.debug(f'end load example cb | {file_id}')
 
-    def load_example_xml_cb():
-        name = dpg.get_value("examples_xml_combo")
-        if name and storage.load_example(name, scene, is_xml=True):
+    def load_example_xml_cb(sender, data):
+        logger.info(f'load example xml cb | {file_id}')
+        if data and storage.load_example(data, scene, is_xml=True):
             state['current_frame'] = 0
             update_positions()
             update_ui()
             render_scene()
-            print(f"Отладка: Загружен XML-пример {name}")
+            logger.debug(f'loaded XML example {data} | {file_id}')
+        logger.debug(f'end load example xml cb | {file_id}')
 
     def save_scene_cb():
+        logger.info(f'save scene cb | {file_id}')
         name = dpg.get_value("save_name")
         if name:
             path = storage.save_scene(name, scene)
             dpg.configure_item("load_combo", items=storage.list_saved('.json'))
-            print(f"Отладка: Сохранён JSON в {path}")
+            logger.debug(f'saved JSON to {path} | {file_id}')
+        logger.debug(f'end save scene cb | {file_id}')
 
     def save_scene_xml_cb():
+        logger.info(f'save scene xml cb | {file_id}')
         name = dpg.get_value("save_name_xml")
         if name:
             path = storage.save_scene(name, scene, is_xml=True)
             dpg.configure_item("load_xml_combo", items=storage.list_saved('.xml'))
-            print(f"Отладка: Сохранён XML в {path}")
+            logger.debug(f'saved XML to {path} | {file_id}')
+        logger.debug(f'end save scene xml cb | {file_id}')
 
     def load_scene_cb():
+        logger.info(f'load scene cb | {file_id}')
         name = dpg.get_value("load_combo")
         if name and storage.load_saved(name, scene):
             state['current_frame'] = 0
             update_positions()
             update_ui()
             render_scene()
-            print(f"Отладка: Загружен сохранённый JSON {name}")
+            logger.debug(f'loaded saved JSON {name} | {file_id}')
+        logger.debug(f'end load scene cb | {file_id}')
 
     def load_scene_xml_cb():
+        logger.info(f'load scene xml cb | {file_id}')
         name = dpg.get_value("load_xml_combo")
         if name and storage.load_saved(name, scene, is_xml=True):
             state['current_frame'] = 0
             update_positions()
             update_ui()
             render_scene()
-            print(f"Отладка: Загружен сохранённый XML {name}")
+            logger.debug(f'loaded saved XML {name} | {file_id}')
+        logger.debug(f'end load scene xml cb | {file_id}')
 
     def start_render_cb():
+        logger.info(f'start render cb | {file_id}')
+
         def update_status(status):
             state['job_status'] = status
             update_ui()
-            print(f"Отладка: Статус экспорта: {status}")
+            logger.debug(f'export status: {status} | {file_id}')
 
         state['job_status'] = "starting"
         update_ui()
         asyncio.create_task(render.export_animation(scene, state['fps'], update_status))
-        print("Отладка: Запущен экспорт")
+        logger.debug(f'export started | {file_id}')
+        logger.debug(f'end start render cb | {file_id}')
 
     def set_tool(sender, data):
+        logger.info(f'set tool | {file_id}')
         state['tool_mode'] = data
         update_ui()
-        print(f"Отладка: Сменён инструмент на {data}")
+        logger.debug(f'tool changed to {data} | {file_id}')
+        logger.debug(f'end set tool | {file_id}')
 
     def set_onion_prev(sender, data):
+        logger.info(f'set onion prev | {file_id}')
         state['onion_prev'] = data
         render_scene()
-        print(f"Отладка: Onion предыдущий: {data}")
+        logger.debug(f'onion prev: {data} | {file_id}')
+        logger.debug(f'end set onion prev | {file_id}')
 
     def set_onion_next(sender, data):
+        logger.info(f'set onion next | {file_id}')
         state['onion_next'] = data
         render_scene()
-        print(f"Отладка: Onion следующий: {data}")
+        logger.debug(f'onion next: {data} | {file_id}')
+        logger.debug(f'end set onion next | {file_id}')
 
     def set_onion_alpha(sender, data):
+        logger.info(f'set onion alpha | {file_id}')
         state['onion_alpha'] = data
         render_scene()
-        print(f"Отладка: Onion прозрачность: {data}")
+        logger.debug(f'onion alpha: {data} | {file_id}')
+        logger.debug(f'end set onion alpha | {file_id}')
 
     def set_fps(sender, data):
+        logger.info(f'set fps | {file_id}')
         state['fps'] = data
-        print(f"Отладка: FPS изменён на {data}")
+        logger.debug(f'fps changed to {data} | {file_id}')
+        logger.debug(f'end set fps | {file_id}')
 
-    # Настройка шрифта для поддержки русского
-    font_path = "default_font.ttf"  # Замени на путь к твоему TTF-шрифту (например, arial.ttf)
-    if os.path.exists(font_path):
-        with dpg.font_registry():
-            with dpg.font(font_path, 16) as font:
-                dpg.add_font_range_hint(dpg.mvFontRangeHint_Cyrillic)
-        dpg.bind_font(font)
-        print(f"Отладка: Шрифт загружен: {font_path}")
-    else:
-        print(f"Отладка: Шрифт {font_path} не найден! Русский текст может не отображаться.")
+    # Font setup for Russian support / Настройка шрифта для поддержки русского
+    try:
+        font_path = "default_font.ttf"  # Replace with path to your TTF font (e.g., arial.ttf) / Замени на путь к твоему TTF-шрифту
+        if os.path.exists(font_path):
+            with dpg.font_registry():
+                with dpg.font(font_path, 16) as font:
+                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Cyrillic)
+            dpg.bind_font(font)
+            logger.debug(f'font loaded: {font_path} | {file_id}')
+        else:
+            logger.warning(f'font {font_path} not found! Russian text may not display. | {file_id}')
+    except Exception as error:
+        logger.error(f'font error: {error} | {file_id}')
 
-    # Настройка окна
+    # Window setup / Настройка окна
     dpg.create_context()
     dpg.create_viewport(title=t('title'), width=1200, height=800)
 
@@ -337,7 +403,7 @@ def setup_gui(scene, storage, render):
                 dpg.add_button(label=t('export_gif_mp4'), tag="export_btn", callback=start_render_cb)
                 dpg.add_text(tag="job_status_text", default_value="")
 
-            # Выбор языка
+            # Language selection / Выбор языка
             with dpg.menu(label=t('language')):
                 dpg.add_combo(label=t('language'), items=['ru', 'en'], default_value=state['language'],
                               callback=lambda s, d: (state.update({'language': d}), load_translations(d), reload_ui()))
@@ -389,13 +455,13 @@ def setup_gui(scene, storage, render):
 
         dpg.add_text(tag="status_text", default_value=t('status'))
 
-    # Инициализация
+    # Initialization / Инициализация
     update_positions()
     update_ui()
     render_scene()
-    print("Отладка: GUI инициализирован")
+    logger.info(f'GUI initialized | {file_id}')
 
-    # Shortcuts (Ctrl+Z для undo, Ctrl+Y для redo)
+    # Shortcuts (Ctrl+Z for undo, Ctrl+Y for redo) / Горячие клавиши (Ctrl+Z для undo, Ctrl+Y для redo)
     def z_pressed(sender, app_data):
         if dpg.is_key_down(dpg.mvKey_ModCtrl):
             undo_cb()
@@ -412,4 +478,4 @@ def setup_gui(scene, storage, render):
     dpg.show_viewport()
     dpg.start_dearpygui()
     dpg.destroy_context()
-    print("Отладка: GUI закрыт")
+    logger.info(f'GUI closed | {file_id}')

@@ -1,11 +1,18 @@
+# /core.py
+
 from copy import deepcopy
 from typing import Dict
 import numpy as np
+import logging
 
+logger = logging.getLogger(__name__)
+
+logger.debug('core.py run')
+file_id = 'core'
 
 class Bone:
     def __init__(self, id, x=0, y=0, angle=0, length=0, parent=None):
-        print(f"Отладка: Создание Bone {id}")
+        logger.info(f'created bone {id} | {file_id}')
         self.id = id
         self.x = float(x)
         self.y = float(y)
@@ -14,7 +21,7 @@ class Bone:
         self.parent = parent
 
     def to_dict(self):
-        print(f"Отладка: Bone {self.id} в словарь")
+        logger.debug(f'bone {self.id} in dict | {file_id}')
         return {
             "id": self.id,
             "x": self.x,
@@ -27,7 +34,7 @@ class Bone:
 
 class Scene:
     def __init__(self):
-        print("Отладка: Инициализация Scene")
+        logger.info(f'initialization Scene | {file_id}')
         self.bones: Dict[str, Bone] = {}
         self.frames: Dict[int, Dict[str, Dict[str, float]]] = {0: {}}
         self.name = "unnamed"
@@ -36,7 +43,7 @@ class Scene:
         self.cache: Dict[int, Dict[str, tuple]] = {}
 
     def snapshot(self):
-        print("Отладка: Создание снапшота Scene")
+        logger.info(f'create scene snapshot | {file_id}')
         return deepcopy({
             "bones": {k: v.to_dict() for k, v in self.bones.items()},
             "frames": deepcopy(self.frames),
@@ -44,13 +51,13 @@ class Scene:
         })
 
     def push_undo(self):
-        print("Отладка: Push undo в Scene")
+        logger.info(f'push undo scene | {file_id}')
         self.undo_stack.append(self.snapshot())
         self.redo_stack.clear()
         self.clear_cache()
 
     def undo(self):
-        print("Отладка: Undo в Scene")
+        logger.info(f'undo to scene | {file_id}')
         if not self.undo_stack:
             return False
         state = self.undo_stack.pop()
@@ -59,7 +66,7 @@ class Scene:
         return True
 
     def redo(self):
-        print("Отладка: Redo в Scene")
+        logger.debug(f'redo in scene | {file_id}')
         if not self.redo_stack:
             return False
         state = self.redo_stack.pop()
@@ -68,18 +75,18 @@ class Scene:
         return True
 
     def _restore(self, state):
-        print("Отладка: Restore состояния Scene")
+        logger.info(f'restore state scene | {file_id}')
         self.bones = {k: Bone(**v) for k, v in state["bones"].items()}
         self.frames = state["frames"]
         self.name = state.get("name", "unnamed")
         self.clear_cache()
 
     def clear_cache(self):
-        print("Отладка: Очистка кэша в Scene")
+        logger.info(f'clear cache | {file_id}')
         self.cache = {}
 
     def compute_abs_positions(self, frame_idx: int) -> Dict[str, tuple]:
-        print(f"Отладка: Вычисление позиций для кадра {frame_idx}")
+        logger.info(f'calculating positions for a frame {frame_idx} | {file_id}')
         if frame_idx in self.cache:
             return self.cache[frame_idx]
 
@@ -118,7 +125,7 @@ class Scene:
         return abs_pos
 
     def to_dict(self):
-        print("Отладка: Scene в словарь")
+        logger.info(f'scene to dict | {file_id}')
         return {
             "name": self.name,
             "bones": {k: v.to_dict() for k, v in self.bones.items()},
@@ -126,13 +133,13 @@ class Scene:
         }
 
     def add_frame(self):
-        print("Отладка: Добавление кадра в Scene")
+        logger.info(f'add frame to scene | {file_id}')
         idx = max(self.frames.keys()) + 1
         self.frames[idx] = {}
         return idx
 
     def update_frame_bone(self, frame_idx: int, bid: str, updates: Dict[str, float]):
-        print(f"Отладка: Обновление кости {bid} в кадре {frame_idx}")
+        logger.debug(f'update bone {bid} on frame {frame_idx} | {file_id}')
         if frame_idx not in self.frames:
             self.frames[frame_idx] = {}
         if bid not in self.frames[frame_idx]:
@@ -141,7 +148,7 @@ class Scene:
         self.clear_cache()
 
     def delete_bone(self, bid: str):
-        print(f"Отладка: Удаление кости {bid}")
+        logger.info(f'delete bone {bid} | {file_id}')
         if bid in self.bones:
             del self.bones[bid]
             for f in self.frames.values():
