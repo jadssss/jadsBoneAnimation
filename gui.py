@@ -9,6 +9,7 @@ import numpy as np
 import os
 import json
 import logging
+import platform  # Добавлен для автоматической загрузки шрифта
 
 logger = logging.getLogger(__name__)
 
@@ -208,12 +209,12 @@ def setup_gui(scene, storage, render):
         logger.info(f'add bone cb | {file_id}')
         bid = dpg.get_value("new_bone_id")
         parent = dpg.get_value("new_bone_parent")
-        if bid:
+        if bid and bid not in scene.bones:
             scene.push_undo()
-            scene.bones[bid] = scene.Bone(id=bid, x=0, y=0, angle=0, length=50, parent=parent)
+            scene.bones[bid] = scene.Bone(id=bid, parent=parent)
             update_ui()
             render_scene()
-            logger.debug(f'added bone {bid} with parent {parent} | {file_id}')
+            logger.debug(f'bone added {bid} with parent {parent} | {file_id}')
         logger.debug(f'end add bone cb | {file_id}')
 
     def delete_bone_cb():
@@ -225,7 +226,7 @@ def setup_gui(scene, storage, render):
             update_positions()
             update_ui()
             render_scene()
-            logger.debug(f'deleted bone {state["selected_bone"]} | {file_id}')
+            logger.debug(f'bone deleted {state["selected_bone"]} | {file_id}')
         logger.debug(f'end delete bone cb | {file_id}')
 
     def undo_cb():
@@ -249,29 +250,33 @@ def setup_gui(scene, storage, render):
     def add_frame_cb():
         logger.info(f'add frame cb | {file_id}')
         scene.push_undo()
-        scene.add_frame()
+        idx = scene.add_frame()
+        state['current_frame'] = idx
         update_ui()
-        logger.debug(f'frame added | {file_id}')
+        render_scene()
+        logger.debug(f'frame added {idx} | {file_id}')
         logger.debug(f'end add frame cb | {file_id}')
 
-    def load_example_cb(sender, data):
+    def load_example_cb():
         logger.info(f'load example cb | {file_id}')
-        if data and storage.load_example(data, scene):
+        name = dpg.get_value("examples_combo")
+        if name and storage.load_example(name, scene):
             state['current_frame'] = 0
             update_positions()
             update_ui()
             render_scene()
-            logger.debug(f'loaded JSON example {data} | {file_id}')
+            logger.debug(f'loaded example JSON {name} | {file_id}')
         logger.debug(f'end load example cb | {file_id}')
 
-    def load_example_xml_cb(sender, data):
+    def load_example_xml_cb():
         logger.info(f'load example xml cb | {file_id}')
-        if data and storage.load_example(data, scene, is_xml=True):
+        name = dpg.get_value("examples_xml_combo")
+        if name and storage.load_example(name, scene, is_xml=True):
             state['current_frame'] = 0
             update_positions()
             update_ui()
             render_scene()
-            logger.debug(f'loaded XML example {data} | {file_id}')
+            logger.debug(f'loaded example XML {name} | {file_id}')
         logger.debug(f'end load example xml cb | {file_id}')
 
     def save_scene_cb():
@@ -362,23 +367,43 @@ def setup_gui(scene, storage, render):
         logger.debug(f'fps changed to {data} | {file_id}')
         logger.debug(f'end set fps | {file_id}')
 
-    # Font setup for Russian support / Настройка шрифта для поддержки русского
-    try:
-        font_path = "default_font.ttf"  # Replace with path to your TTF font (e.g., arial.ttf) / Замени на путь к твоему TTF-шрифту
-        if os.path.exists(font_path):
-            with dpg.font_registry():
-                with dpg.font(font_path, 16) as font:
-                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Cyrillic)
-            dpg.bind_font(font)
-            logger.debug(f'font loaded: {font_path} | {file_id}')
-        else:
-            logger.warning(f'font {font_path} not found! Russian text may not display. | {file_id}')
-    except Exception as error:
-        logger.error(f'font error: {error} | {file_id}')
-
     # Window setup / Настройка окна
     dpg.create_context()
     dpg.create_viewport(title=t('title'), width=1200, height=800)
+
+    # Font setup for Russian support / Настройка шрифта для поддержки русского
+    try:
+        sys_platform = platform.system()
+        font_path = None
+
+        if sys_platform == 'Windows':
+            font_path = r'C:\Windows\Fonts\arial.ttf'  # Arial поддерживает кириллицу по умолчанию
+
+        elif sys_platform == 'Darwin':  # MacOS
+            font_path = '/System/Library/Fonts/Supplemental/Arial.ttf'  # Или Helvetica, но Arial надёжнее для кириллицы
+
+        elif sys_platform == 'Linux':
+            # Проверяем распространённые пути для шрифтов с кириллицей (DejaVu или Noto часто предустановлены)
+            possible_paths = [
+                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+                '/usr/share/fonts/TTF/DejaVuSans.ttf',  # Альтернативный путь в некоторых дистрибутивах
+            ]
+            for p in possible_paths:
+                if os.path.exists(p):
+                    font_path = p
+                    break
+
+        if font_path and os.path.exists(font_path):
+            with dpg.font_registry():
+                with dpg.font(font_path, 16) as font:  # 16 - размер шрифта, можно изменить
+                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Cyrillic)
+            dpg.bind_font(font)
+            logger.debug(f'font loaded automatically: {font_path} | {file_id}')
+        else:
+            logger.warning(f'No suitable font found for Cyrillic support on {sys_platform}. Russian text may not display correctly. | {file_id}')
+    except Exception as error:
+        logger.error(f'font error: {error} | {file_id}')
 
     with dpg.window(label=t('title'), no_close=True, no_title_bar=True, width=1200, height=800):
         with dpg.menu_bar():
